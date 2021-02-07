@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+require_relative '../lib/active_job_azure/cli'
+
+begin
+  cli = ActiveJobAzure::CLI.new
+  cli.parse_options(ARGV)
+  cli.run
+rescue => exception
+  STDERR.puts exception.message
+  STDERR.puts exception.backtrace.join("\n")
+
+  exit 1
+end
+
