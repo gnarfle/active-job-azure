@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "activejob", "> 5.2"
   spec.add_dependency "concurrent-ruby", "~> 1.1.0"
   spec.add_dependency "slop", "~> 4.8.0"
+  spec.add_dependency "typhoeus", "> 1.4bundl"
 
   spec.add_development_dependency 'pry'
   spec.add_development_dependency 'dotenv'

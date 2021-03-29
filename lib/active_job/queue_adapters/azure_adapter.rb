@@ -17,19 +17,22 @@ module ActiveJob
           delay = timestamp - Time.now.to_i
           options['visibility_timeout'] = delay # todo - make sure not too big? max 7 days
         end
-        ActiveJobAzure.client.create_message(job.queue_name, JobWrapper.new(job), options)
+
+        job_args = {
+          class: JobWrapper,
+          wrapped: job.class,
+          args: [ job.serialize ]
+        }
+
+        ActiveJobAzure.client.create_message(
+          job.queue_name,
+          job_args.to_json,
+          options
+        )
       end
 
       class JobWrapper
-        attr_accessor :job_data
-
-        def initialize(job)
-          @job_data = job.serialize
-        end
-
-        def encode(method = "utf-8")
-          YAML.dump(self).encode(method)
-        end
+        include ActiveJobAzure::Worker
 
         def perform
           Base.execute job_data

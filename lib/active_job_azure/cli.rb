@@ -2,6 +2,7 @@ require 'rubygems'
 require 'json'
 require 'yaml'
 require 'active_job_azure'
+require 'active_job_azure/launcher'
 require 'active_job_azure/manager'
 require 'azure/storage/queue'
 require 'active_job'
@@ -12,6 +13,7 @@ require 'slop'
 
 module ActiveJobAzure
   class CLI
+    attr_accessor :launcher
 
     def parse_options(args = ARGV)
       opts = option_parser
@@ -20,23 +22,63 @@ module ActiveJobAzure
 
     def run
       if rails_app?
+        require "rails"
         require "active_job_azure/rails"
-        require 'rails'
         require File.expand_path('config/application.rb')
         require File.expand_path('config/environment.rb')
       end
 
-      puts "Azure Queue Worker reporting for duty"
-      ActiveJobAzure::Manager.new(options).run
-      # loop do
-      #   messages = client.list_messages(options[:queue], options[:fetch])
-      #   sleep 1 and next if messages.empty?
-      #   messages.each do |message|
-      #     job = YAML.load(message.message_text)
-      #     job.perform
-      #     client.delete_message(options[:queue], message.id, message.pop_receipt)
-      #   end
-      # end
+      if options[:include]
+         require options[:include]
+      end
+
+      sigs = %w[INT TERM TTIN TSTP]
+      sigs.each do |sig|
+        trap sig do
+          handle_signal(sig)
+        end
+      rescue ArgumentError
+        puts "Signal #{sig} not supported"
+      end
+
+      @launcher = ActiveJobAzure::Launcher.new(options)
+
+      begin
+        launcher.run
+      rescue Interrupt
+        puts "Shutting down"
+        launcher.stop
+        puts "Bye!"
+        exit(0)
+      end
+    end
+
+    SIGNAL_HANDLERS = {
+      # Ctrl-C in terminal
+      "INT" => ->(cli) { raise Interrupt },
+      # TERM is the signal that Sidekiq must exit.
+      # Heroku sends TERM and then waits 30 seconds for process to exit.
+      "TERM" => ->(cli) { raise Interrupt },
+      "TSTP" => ->(cli) {
+        cli.launcher.quiet
+      },
+      "TTIN" => ->(cli) {
+        # Thread.list.each do |thread|
+        #   Sidekiq.logger.warn "Thread TID-#{(thread.object_id ^ ::Process.pid).to_s(36)} #{thread.name}"
+        #   if thread.backtrace
+        #     Sidekiq.logger.warn thread.backtrace.join("\n")
+        #   else
+        #     Sidekiq.logger.warn "<no backtrace available>"
+        #   end
+        # end
+      }
+    }
+    UNHANDLED_SIGNAL_HANDLER = ->(cli) { Sidekiq.logger.info "No signal handler registered, ignoring" }
+    SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
+
+    def handle_signal(sig)
+      puts "Got #{sig} signal"
+      SIGNAL_HANDLERS[sig].call(self)
     end
 
     def options
@@ -60,6 +102,7 @@ module ActiveJobAzure
         o.integer '-c', '--concurrency', 'number of threads', default: ActiveJobAzure::DEFAULTS['concurrency']
         o.integer '-f', '--fetch', 'number of jobs to fetch per azure call', default: 20
         o.integer '-r', '--retry', 'retry interval (in seconds)', default: 30
+        o.string '-i', '--include', 'include file or directory'
         o.on '-e', '--empty', 'empty queue [NAME] (cannot be undome!)' do
           clear_queue
         end

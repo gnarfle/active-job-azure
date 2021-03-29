@@ -1,3 +1,5 @@
+require "active_job_azure/worker"
+
 module ActiveJobAzure
   class Rails < ::Rails::Engine
     config.before_configuration do

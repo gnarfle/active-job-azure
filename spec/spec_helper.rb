@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "active/job/azure"
+require "active_job_azure"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

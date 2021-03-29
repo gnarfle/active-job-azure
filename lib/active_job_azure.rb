@@ -1,12 +1,18 @@
+require 'typhoeus'
+require 'typhoeus/adapters/faraday'
 require 'active_job_azure/rails' if defined?(::Rails::Engine)
 require 'concurrent'
-require 'dotenv/load'
+require 'azure/storage/queue'
+require 'active_job_azure/worker'
+require 'active_job_azure/typhoeus_client'
 
 module ActiveJobAzure
   DEFAULTS = {
     threads: Concurrent.processor_count,
-    fetch: 20,
-    retry: 30
+    fetch: 32,   # how many jobs to fetch at once, max 32
+    retry: 30,   # how long to "hide" jobs in azure while they are being worked
+    timeout: 30, # time to wait for jobs to finish on shutdown
+    interval: 0  # how long to pause when fetching jobs from azure
   }
 
   def self.options
@@ -50,15 +56,21 @@ module ActiveJobAzure
 
   def self.client
     opts = {}
-    if @storage_account_name && @storage_account_key
+
+    if @storage_connection_string
+      opts[:storage_connection_string] = @storage_connection_string
+    elsif @storage_account_name && @storage_account_key
       opts[:storage_account_name] = @storage_account_name
       opts[:storage_account_key] = @storage_account_key
-    elsif @storage_connection_string
-      opts[:storage_connection_string] = @storage_connection_string
     end
-    @client ||= ::Azure::Storage::Queue::QueueService.create(opts)
-  rescue Azure::Storage::Common::InvalidOptionsError => e
-    puts "Invalid connection details"
+
+    http_client = ActiveJobAzure::TyphoeusClient.create(opts)
+    @client ||= Azure::Storage::Queue::QueueService.new(client: http_client)
+  rescue Exception => e
+    puts e.message
     exit
+  end
+
+  def self.logger
   end
 end
