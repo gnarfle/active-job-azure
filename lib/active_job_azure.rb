@@ -5,6 +5,7 @@ require 'concurrent'
 require 'azure/storage/queue'
 require 'active_job_azure/worker'
 require 'active_job_azure/typhoeus_client'
+require 'logger'
 
 module ActiveJobAzure
   DEFAULTS = {
@@ -67,10 +68,11 @@ module ActiveJobAzure
     http_client = ActiveJobAzure::TyphoeusClient.create(opts)
     @client ||= Azure::Storage::Queue::QueueService.new(client: http_client)
   rescue Exception => e
-    puts e.message
-    exit
+    logger.fatal(e.message)
+    exit 1
   end
 
   def self.logger
+    @logger ||= Logger.new($stdout, level: Logger::INFO)
   end
 end

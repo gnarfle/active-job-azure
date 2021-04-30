@@ -3,6 +3,7 @@ require 'json'
 require 'yaml'
 require 'active_job_azure'
 require 'active_job_azure/launcher'
+require 'active_job_azure/logger'
 require 'active_job_azure/manager'
 require 'azure/storage/queue'
 require 'active_job'
@@ -13,6 +14,7 @@ require 'slop'
 
 module ActiveJobAzure
   class CLI
+    include Logging
     attr_accessor :launcher
 
     def parse_options(args = ARGV)
@@ -38,7 +40,7 @@ module ActiveJobAzure
           handle_signal(sig)
         end
       rescue ArgumentError
-        puts "Signal #{sig} not supported"
+        log.error "Signal #{sig} not supported"
       end
 
       @launcher = ActiveJobAzure::Launcher.new(options)
@@ -46,9 +48,9 @@ module ActiveJobAzure
       begin
         launcher.run
       rescue Interrupt
-        puts "Shutting down"
+        log.info "Shutting down"
         launcher.stop
-        puts "Bye!"
+        log.info "Bye!"
         exit(0)
       end
     end
@@ -73,11 +75,11 @@ module ActiveJobAzure
         # end
       }
     }
-    UNHANDLED_SIGNAL_HANDLER = ->(cli) { Sidekiq.logger.info "No signal handler registered, ignoring" }
+    UNHANDLED_SIGNAL_HANDLER = ->(cli) { log.info "No signal handler registered, ignoring" }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
 
     def handle_signal(sig)
-      puts "Got #{sig} signal"
+      log.debug "Got #{sig} signal"
       SIGNAL_HANDLERS[sig].call(self)
     end
 

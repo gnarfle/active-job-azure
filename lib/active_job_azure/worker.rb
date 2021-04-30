@@ -1,3 +1,5 @@
+require 'active_job_azure/logger'
+
 module ActiveJobAzure
   module Worker
     def self.included(base)
@@ -5,6 +7,7 @@ module ActiveJobAzure
     end
 
     module ClassMethods
+      include Logging
       attr_reader :queue_name
 
       def azure_queue(name)
@@ -36,11 +39,15 @@ module ActiveJobAzure
           options['visibility_timeout'] = delay # todo - make sure not too big? max 7 days
         end
 
-        ActiveJobAzure.client.create_message(
+        log.debug("Enqueueing job to #{queue_name} with #{job_args} and options: #{options}")
+
+        message_object = ActiveJobAzure.client.create_message(
           queue_name,
           job_args.to_json,
           options
         )
+
+        log.info(message_object)
       end
     end
   end
