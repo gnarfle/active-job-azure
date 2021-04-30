@@ -1,4 +1,5 @@
 require 'active_job_azure'
+require 'active_job_azure/logger'
 
 if defined?(::Rails) && ::Rails.respond_to?(:application)
   require 'rails'
@@ -9,6 +10,7 @@ end
 
 module ActiveJobAzure
   class Manager
+    include Logging
     attr_reader :options
 
     def initialize(options)
@@ -24,7 +26,7 @@ module ActiveJobAzure
     def terminate
       return if @done
       @done = true
-      puts "Terminating quiet workers"
+      log.info "Terminating quiet workers"
       @pool.shutdown
       @pool.wait_for_termination(options[:timeout])
     end
@@ -53,7 +55,7 @@ module ActiveJobAzure
             rescue => e
               # temporary for debugging, we don't want to catch errors here
               # without this jobs silently fail and get retried
-              puts e.inspect
+              log.error e.inspect
             end
           end
         end

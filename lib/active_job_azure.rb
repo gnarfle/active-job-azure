@@ -68,8 +68,8 @@ module ActiveJobAzure
     http_client = ActiveJobAzure::TyphoeusClient.create(opts)
     @client ||= Azure::Storage::Queue::QueueService.new(client: http_client)
   rescue Exception => e
-    puts e.message
-    exit
+    logger.fatal(e.message)
+    exit 1
   end
 
   def self.logger
