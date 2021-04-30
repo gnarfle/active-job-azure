@@ -5,6 +5,7 @@ require 'concurrent'
 require 'azure/storage/queue'
 require 'active_job_azure/worker'
 require 'active_job_azure/typhoeus_client'
+require 'logger'
 
 module ActiveJobAzure
   DEFAULTS = {
@@ -72,5 +73,6 @@ module ActiveJobAzure
   end
 
   def self.logger
+    @logger ||= Logger.new($stdout, level: Logger::INFO)
   end
 end
