@@ -32,7 +32,10 @@ module ActiveJobAzure
     end
 
     def run
+      log.info "Starting Active Job worker on queue #{options[:queue]} with retry count #{options[:retry]}"
       loop do
+        log.debug "Requesting #{options[:fetch]} items from Azure"
+
         messages = ActiveJobAzure.client.list_messages(options[:queue], options[:retry], {
           number_of_messages: options[:fetch]
         })
@@ -45,6 +48,8 @@ module ActiveJobAzure
               job_data = JSON.parse(message.message_text)
               klass = constantize(job_data['class'])
               args = job_data['args']
+
+              log.debug "Executing #{klass}.perform #{args}"
 
               worker = klass.new
               worker.perform args
