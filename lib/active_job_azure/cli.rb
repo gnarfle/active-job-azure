@@ -29,7 +29,7 @@ module ActiveJobAzure
       end
 
       if options[:include]
-         require options[:include]
+        require options[:include]
       end
 
       sigs = %w[INT TERM TTIN TSTP]
@@ -123,18 +123,17 @@ module ActiveJobAzure
       end
       opts.to_hash
     rescue Slop::Error => e
-      puts e.message
-      exit(0)
+      abort(e.message)
     end
 
     def clear_queue
-      puts "Please supply the queue name to empty" and die unless ARGV.count == 2
+      abort("Please supply the queue name to empty") unless ARGV.count == 2
       begin
         queue = ARGV[1]
         count, meta = client.get_queue_metadata queue
         print "Are you sure you want to clear #{count} messages? (yes/no): "
         input = STDIN.gets.chomp
-        puts "Aborting!" and exit unless input[0].downcase == 'y'
+        abort("Aborting") unless input[0].downcase == 'y'
         client.clear_messages queue
         puts "Deleted #{count} messages successfully"
       rescue Azure::Core::Http::HTTPError => e
@@ -145,7 +144,7 @@ module ActiveJobAzure
     end
 
     def delete_queue
-      puts "Please supply the queue name to empty" and die unless ARGV.count == 2
+      abort("Please supply the queue name to empty") unless ARGV.count == 2
       begin
         queue = ARGV[1]
         client.delete_queue queue
@@ -158,11 +157,11 @@ module ActiveJobAzure
     end
 
     def create_queue
-      puts "Please supply the queue name to empty" and die unless ARGV.count == 2
+      abort("Please supply the queue name to empty") unless ARGV.count == 2
       begin
         queue = ARGV[1]
         client.create_queue queue
-        puts "Crated #{queue} successfully"
+        puts "Created #{queue} successfully"
       rescue Azure::Core::Http::HTTPError => e
         puts e.description
       ensure
